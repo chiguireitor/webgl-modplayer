@@ -1,0 +1,101 @@
+<html>
+<head>
+</head>
+<body>
+<script src="./riffwave.js"></script>
+<script src="./module.js"></script>
+<script>
+var xhr = new XMLHttpRequest();
+var modulo, mixer;
+
+var test_pattern, test_div, test_interval;
+
+function fillSampleButtons() {
+	for (var i=0; i < modulo.sample_info.length; i++) {
+		var sample_info = modulo.sample_info[i];
+		
+		if (sample_info.sampleLength > 0) {
+			var enlace = document.createElement("a");
+			enlace.href = "javascript:void(0)";
+			enlace.appendChild(document.createTextNode("Sample: "+sample_info.name));
+			enlace.sample = sample_info;
+			enlace.onclick = function(e) {
+				var sample = e.target.sample;
+				
+				var data = [];
+				for (var d=0; d < sample.sampleData.data.length; d++) {
+					data.push(sample.sampleData.data[d] + 128);
+				}
+				
+				var riff = new RIFFWAVE(data);
+				riff.header.sampleRate = 14000;
+				var audio = new Audio(riff.dataURI);
+				audio.play();
+			};
+			
+			document.body.appendChild(enlace);
+			document.body.appendChild(document.createElement("br"));
+		}
+	}
+	
+	document.body.appendChild(document.createElement("br"));
+	
+	for (var i=0; i < modulo.patterns.length; i++) {
+		var pattern = modulo.patterns[i];
+		
+		var enlace = document.createElement("a");
+		enlace.href = "javascript:void(0)";
+		enlace.appendChild(document.createTextNode("Pattern: "+ i));
+		enlace.pattern = pattern;
+		enlace.onclick = function(e) {
+			var pat = e.target.pattern;
+			
+			test_pattern = pat;
+			test_div = 0;
+			
+			test_interval = setInterval(function() {
+				if (test_div >= 64) {
+					clearInterval(test_interval);
+				} else {
+					var division = test_pattern.divisions[test_div++];
+					
+					for (var nota_i=0; nota_i < division.length; nota_i++) {
+						var nota = division[nota_i];
+						
+						if (nota.instrument > 0) {
+							var sample = modulo.sample_info[nota.instrument - 1];
+							
+							var data = [];
+							for (var d=0; d < sample.sampleData.data.length; d++) {
+								data.push(sample.sampleData.data[d] + 128);
+							}
+							
+							var riff = new RIFFWAVE(data);
+							riff.header.sampleRate = 8200 + Math.round(Math.random()*8000);
+							var audio = new Audio(riff.dataURI);
+							audio.play();
+						}
+					}
+				}
+			}, 100);
+		};
+		
+		document.body.appendChild(enlace);
+		document.body.appendChild(document.createElement("br"));
+	}
+}
+
+xhr.onloadend = function(e) {
+	modulo = new Module(e.target.response);
+	mixer = new WebGLMixer();
+	mixer.initializeModule(modulo);
+	
+	fillSampleButtons();
+};
+
+xhr.responseType = "arraybuffer";
+xhr.open("GET", "./ecstacy.mod", true);
+xhr.send();
+</script>
+</body>
+</html>
